@@ -19,6 +19,7 @@ import {
   readJson,
   resolveNpmCli,
   sha256,
+  nonCanonicalEolEntries,
 } from './release-lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -86,6 +87,23 @@ const fixtureRoot = await mkdtemp(path.join(tmpdir(), 'project-os-release-fixtur
 try {
   await runChecked(process.execPath, [path.join(root, 'scripts', 'check-package.mjs')], { cwd: root }, 'package contract');
   await runChecked(process.execPath, [path.join(root, 'scripts', 'check-neutrality.mjs')], { cwd: root }, 'neutrality');
+  const eolOutput = await runChecked(
+    'git',
+    ['ls-files', '--eol'],
+    { cwd: root },
+    'canonical EOL check',
+  );
+  const eolOffenders = nonCanonicalEolEntries(eolOutput);
+  if (eolOffenders.length > 0) {
+    const sample = eolOffenders
+      .slice(0, 10)
+      .map((entry) => `${entry.path} (w/${entry.worktreeEol})`)
+      .join(', ');
+    throw new Error(
+      `El working tree no respeta LF canónico en ${eolOffenders.length} archivo(s): ${sample}. `
+      + 'Use una worktree/clone fresca del commit; no publique desde un checkout legacy y no reetiquete.',
+    );
+  }
   const packedRaw = await runChecked(
     process.execPath,
     [npmCli, 'pack', '--json', '--pack-destination', outputRoot],

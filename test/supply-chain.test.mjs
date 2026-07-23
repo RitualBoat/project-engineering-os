@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import { checkPackageRoot } from '../scripts/check-package.mjs';
-import { sha256 } from '../scripts/release-lib.mjs';
+import { nonCanonicalEolEntries, sha256 } from '../scripts/release-lib.mjs';
 import { verifyRelease } from '../scripts/verify-release.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -61,7 +61,7 @@ test('package contract rechaza bin ausente y licencia incompatible', async () =>
 
 test('release verifier rejects an altered tarball', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'project-os-release-negative-'));
-  const filename = 'create-project-engineering-os-0.1.1.tgz';
+  const filename = 'create-project-engineering-os-0.1.2.tgz';
   const tarballPath = path.join(root, filename);
   const original = Buffer.from('verified tarball fixture');
   const digest = sha256(original);
@@ -71,7 +71,7 @@ test('release verifier rejects an altered tarball', async () => {
     `${JSON.stringify({
       schemaVersion: 1,
       package: 'create-project-engineering-os',
-      version: '0.1.1',
+      version: '0.1.2',
       commit: 'a'.repeat(40),
       tarball: filename,
       sha256: digest,
@@ -84,4 +84,18 @@ test('release verifier rejects an altered tarball', async () => {
 
   await writeFile(tarballPath, Buffer.from('altered tarball fixture'));
   await assert.rejects(verifyRelease(root), /Checksum divergente/);
+});
+
+test('release pack rechaza CRLF o mixed cuando el atributo exige LF', () => {
+  const output = [
+    'i/lf    w/lf    attr/text=auto eol=lf \tREADME.md',
+    'i/lf    w/crlf  attr/text=auto eol=lf \tbin/project-os.mjs',
+    'i/lf    w/mixed attr/text=auto eol=lf \tdocs/README.md',
+    'i/-text w/-text attr/-text             \tasset.png',
+  ].join('\n');
+
+  assert.deepEqual(nonCanonicalEolEntries(output), [
+    { path: 'bin/project-os.mjs', worktreeEol: 'crlf' },
+    { path: 'docs/README.md', worktreeEol: 'mixed' },
+  ]);
 });

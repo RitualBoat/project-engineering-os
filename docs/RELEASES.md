@@ -13,6 +13,10 @@ Una release:
 6. adjunta exactamente esos artefactos a GitHub Release;
 7. publica el mismo `.tgz` en npm con provenance OIDC.
 
+Antes de empacar, `pack-release.mjs` exige que todo archivo con `eol=lf` tenga LF real en el working tree.
+Un checkout legacy con CRLF falla nombrando rutas. La recuperación es crear una worktree/clone fresca del
+commit; no se normaliza ni reescribe automáticamente la copia del usuario.
+
 No se reutiliza una versión ni se mueve un tag publicado. Una release defectuosa se depreca y se corrige
 con patch. `unpublish` no es el rollback normal.
 

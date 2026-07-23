@@ -2,6 +2,11 @@
 
 All notable changes follow [Semantic Versioning](https://semver.org/).
 
+## 0.1.2 - 2026-07-23
+
+- Fail release packing when a legacy checkout violates the canonical LF policy.
+- Name offending paths and recover through a fresh worktree/clone instead of reporting a false PASS.
+
 ## 0.1.1 - 2026-07-23
 
 - First stable npm/npx release through Trusted Publishing OIDC.

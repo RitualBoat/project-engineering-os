@@ -1,6 +1,6 @@
 {
   "name": "create-project-engineering-os",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Bootstrap, governance, SDD harness and technical-debt control for reproducible projects.",
   "keywords": [
     "agents",
