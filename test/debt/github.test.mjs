@@ -12,16 +12,21 @@ function failingRunner() {
 }
 
 // Runner simulado con estado: emula gh issue list/create/edit sin red.
-function makeMockGithub() {
+function makeMockGithub({ hideFirstCreatedLookup = false } = {}) {
   const issues = [];
   const calls = [];
   let nextNumber = 100;
+  let hideNextList = false;
   const runner = (command, args) => {
     calls.push([command, ...args]);
     assert.equal(command, 'gh');
     if (args[0] === '--version') return { status: 0, stdout: 'gh version test', stderr: '' };
     if (args[0] === 'auth') return { status: 0, stdout: 'Logged in', stderr: '' };
     if (args[0] === 'issue' && args[1] === 'list') {
+      if (hideNextList) {
+        hideNextList = false;
+        return { status: 0, stdout: '[]', stderr: '' };
+      }
       return { status: 0, stdout: JSON.stringify(issues.filter((issue) => issue.state === 'open')), stderr: '' };
     }
     if (args[0] === 'issue' && args[1] === 'create') {
@@ -30,6 +35,7 @@ function makeMockGithub() {
       const number = nextNumber;
       nextNumber += 1;
       issues.push({ number, title, body, url: `https://example.test/issues/${number}`, state: 'open' });
+      hideNextList = hideFirstCreatedLookup;
       return { status: 0, stdout: `https://example.test/issues/${number}`, stderr: '' };
     }
     if (args[0] === 'issue' && args[1] === 'edit') {
@@ -100,6 +106,17 @@ test('required crea un issue idempotente por plan pausado y reejecutar es no-op'
   assert.equal(mock.issues.length, 1);
   assert.equal(mock.calls.filter((call) => call.includes('edit')).length, editsBefore);
   assert.ok(second.checks.some((entry) => /no-op/.test(entry.summary)));
+});
+
+test('required persiste el backref desde la URL creada aunque GitHub aun no lo liste', () => {
+  const root = tempCopy('github-required');
+  const state = checkState({ root, now: NOW });
+  const mock = makeMockGithub({ hideFirstCreatedLookup: true });
+
+  const result = syncGithub({ root, config: state.config, registry: state.registry, evaluation: state.evaluation, runner: mock.runner });
+
+  assert.ok(result.checks.some((entry) => entry.id === 'github-issue-plan-a' && /creado/.test(entry.summary)));
+  assert.equal(readJson(root, '.project-os/debt/registry.json').items[0].issue, 100);
 });
 
 test('la sincronizacion actualiza el bloque administrado preservando texto ajeno', () => {

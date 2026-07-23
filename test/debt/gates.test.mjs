@@ -79,7 +79,7 @@ test('pre-archive: un Blocker/Major confirmado del flujo bloquea el archive', ()
   assert.match(gate.summary, /major/i);
 });
 
-test('pre-archive: deuda nueva abierta sobre plan pausado falla tambien en saneamiento', () => {
+test('pre-archive: un feature puede capturar deuda preexistente; saneamiento no puede agregar deuda nueva', () => {
   const root = tempCopy('threshold-reached');
   const newDebt = {
     schemaVersion: 1,
@@ -102,8 +102,7 @@ test('pre-archive: deuda nueva abierta sobre plan pausado falla tambien en sanea
   capture({ root, flow: 'change-en-pausa', input: newDebt, now: NOW });
   const results = preArchiveGate({ root, change: 'change-en-pausa', now: NOW });
   const gate = results.find((entry) => entry.id === 'debt-gate');
-  assert.equal(gate.status, 'FAIL');
-  assert.match(gate.summary, /plan pausado/);
+  assert.equal(gate.status, 'PASS');
 
   // NO GENERAR MAS DEUDA TECNICA: el flujo de saneamiento que confirma deuda nueva tampoco archiva.
   const remediation = { ...newDebt, kind: 'remediation', candidates: [{ ...newDebt.candidates[0], title: 'Atajo descubierto durante saneamiento', artifact: 'src/otro-mas.mjs' }] };

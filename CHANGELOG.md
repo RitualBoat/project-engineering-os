@@ -2,6 +2,14 @@
 
 All notable changes follow [Semantic Versioning](https://semver.org/).
 
+## 0.1.4 - 2026-07-23
+
+- Allow a feature to archive after it captures pre-existing minor debt; the resulting pause governs
+  subsequent work in the owner plan.
+- Keep `NO GENERAR MAS DEUDA TECNICA` strict for remediation flows.
+- Persist a newly created GitHub remediation-issue backreference from the `gh` URL even when issue
+  listing is eventually consistent, so the immediate handoff is accurate.
+
 ## 0.1.3 - 2026-07-23
 
 - Correct state metadata drift immediately after an upgrade.

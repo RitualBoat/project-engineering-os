@@ -136,12 +136,13 @@ export function preArchiveGate({ root, change, now = new Date() }) {
     return checks;
   }
 
-  // NO GENERAR MAS DEUDA TECNICA: ningun change (tampoco el de saneamiento) archiva deuda confirmada
-  // nueva sobre un plan pausado. La deuda descubierta durante el saneamiento se resuelve, se refuta o
-  // se acepta con excepcion valida antes de archivar.
-  const pausedWithNewDebt = confirmed.filter(
-    (candidate) => evaluation.plans[candidate.planOwner]?.paused && stillOpen(candidate),
-  );
+  // Un feature puede descubrir y registrar deuda preexistente: la pausa gobierna el trabajo futuro del
+  // plan duenio, no borra la evidencia ni impide cerrar el flujo que la hizo visible. La prohibicion
+  // NO GENERAR MAS DEUDA TECNICA aplica estrictamente a remediation: ese flujo debe resolver, refutar o
+  // excepcionar cualquier hallazgo nuevo antes de archivar.
+  const pausedWithNewDebt = assessment.kind === 'remediation'
+    ? confirmed.filter((candidate) => evaluation.plans[candidate.planOwner]?.paused && stillOpen(candidate))
+    : [];
   if (pausedWithNewDebt.length) {
     checks.push(check(
       'debt-gate',
