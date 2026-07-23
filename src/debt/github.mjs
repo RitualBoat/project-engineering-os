@@ -135,6 +135,11 @@ function findRemediationIssue({ runner, config, planId }) {
   return issues.find((issue) => (issue.body ?? '').includes(planMarker(planId))) ?? null;
 }
 
+function issueNumberFromUrl(value) {
+  const match = String(value ?? '').trim().match(/\/issues\/(\d+)\/?$/);
+  return match ? Number(match[1]) : null;
+}
+
 // Sincronizacion idempotente: un issue por plan pausado, identificado por marcador. Reejecutar sin
 // cambios de estado no edita nada. Devuelve checks PASS/FAIL/WARN/SKIP sin falsos verdes.
 // `persistIssueRefs: false` evita escribir los backrefs en registry.json: postfinish corre sobre la
@@ -183,9 +188,15 @@ export function syncGithub({ root, config, registry, evaluation, runner = defaul
         if (config.github.repo) args.push('--repo', config.github.repo);
         const created = runner('gh', args);
         if (created.status !== 0) throw new Error(`gh issue create fallo: ${sanitize(created.stderr).slice(-200)}`);
-        const found = findRemediationIssue({ runner, config, planId: plan.id });
-        issueNumber = found?.number ?? null;
-        issueUrl = found?.url ?? created.stdout.trim();
+        // GitHub puede tardar en listar un issue que acaba de crear. La URL de gh create ya es una
+        // identidad suficiente para persistir el backref y para que handoff no sugiera falsamente otro sync.
+        issueUrl = created.stdout.trim();
+        issueNumber = issueNumberFromUrl(issueUrl);
+        if (!issueNumber) {
+          const found = findRemediationIssue({ runner, config, planId: plan.id });
+          issueNumber = found?.number ?? null;
+          issueUrl = found?.url ?? issueUrl;
+        }
         checks.push({ id: `github-issue-${plan.id}`, status: 'PASS', summary: `Issue de saneamiento creado para ${plan.id}: ${issueUrl}` });
       } else {
         issueNumber = existing.number;
