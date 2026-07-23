@@ -44,3 +44,15 @@ export function assertSemver(version) {
   }
 }
 
+export function nonCanonicalEolEntries(output) {
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.match(/^i\/\S+\s+w\/(\S+)\s+attr\/([^\t]+)\t(.+)$/))
+    .filter(Boolean)
+    .filter((match) => /\beol=lf\b/.test(match[2]) && match[1] !== 'lf')
+    .map((match) => ({
+      path: match[3],
+      worktreeEol: match[1],
+    }));
+}
+
