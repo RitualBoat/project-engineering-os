@@ -257,6 +257,7 @@ async function materializeUpgradeIdentity({
   ));
   const state = structuredClone(previousState);
   const previousRecords = {};
+  const projectRecords = {};
   for (const target of targets) {
     if (!state.files?.[target]) {
       throw new ConstructorError(
@@ -268,6 +269,20 @@ async function materializeUpgradeIdentity({
       );
     }
     previousRecords[target] = structuredClone(state.files[target]);
+    const projectEntry = blueprint.entries.find((entry) => entry.target === target);
+    if (!projectEntry) {
+      throw new ConstructorError(
+        'UPGRADE_IDENTITY_BLUEPRINT_MISSING',
+        `${target} no existe en el blueprint destino.`,
+      );
+    }
+    projectRecords[target] = {
+      ...previousRecords[target],
+      hash: sha256(desiredByTarget[target]),
+      owner: 'project',
+      source: projectEntry.source,
+      sourceHash: projectEntry.sourceHash,
+    };
     state.files[target] = {
       ...state.files[target],
       hash: sha256(current[target].raw),
@@ -277,7 +292,7 @@ async function materializeUpgradeIdentity({
   return {
     blueprint: { ...blueprint, entries },
     previousState: state,
-    previousRecords,
+    projectRecords,
     targets,
   };
 }
@@ -308,7 +323,7 @@ async function preparePlan({
   );
   const stateResult = await readInstalledStateWithMigrations(preflight.target);
   let previousState = stateResult.state;
-  let upgradePreviousRecords = {};
+  let upgradeProjectRecords = {};
   let upgradeTargets = [];
   if (upgradeIdentity) {
     const upgrade = await materializeUpgradeIdentity({
@@ -318,7 +333,7 @@ async function preparePlan({
     });
     blueprint = upgrade.blueprint;
     previousState = upgrade.previousState;
-    upgradePreviousRecords = upgrade.previousRecords;
+    upgradeProjectRecords = upgrade.projectRecords;
     upgradeTargets = upgrade.targets;
   }
   const incompleteTransaction = await findIncompleteTransaction(preflight.target);
@@ -336,17 +351,15 @@ async function preparePlan({
       item.entry.owner = 'project';
       if (item.stateRecord) {
         item.stateRecord = {
-          ...upgradePreviousRecords[target],
+          ...upgradeProjectRecords[target],
           hash: item.afterHash,
-          owner: 'project',
         };
       }
     }
     if (plan.proposedState.files[target]) {
       plan.proposedState.files[target] = {
-        ...upgradePreviousRecords[target],
+        ...upgradeProjectRecords[target],
         hash: item?.afterHash ?? plan.proposedState.files[target].hash,
-        owner: 'project',
       };
     }
   }

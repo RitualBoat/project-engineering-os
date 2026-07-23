@@ -2,6 +2,11 @@
 
 All notable changes follow [Semantic Versioning](https://semver.org/).
 
+## 0.1.3 - 2026-07-23
+
+- Correct state metadata drift immediately after an upgrade.
+- Require normal `sync --check` and `upgrade --check` to converge without a second state mutation.
+
 ## 0.1.2 - 2026-07-23
 
 - Fail release packing when a legacy checkout violates the canonical LF policy.
